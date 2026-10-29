@@ -1,13 +1,17 @@
 
-
+import os.path
 from pathlib import Path
 
 import cv2
 import numpy as np
 
 ROOT = Path("../data/icdar2015")
-image_path = ROOT / "train_images/img_1.jpg"
-label_path = ROOT / "train_gt/gt_img_1.txt"
+# image_path = ROOT / "train_images/img_1.jpg"
+# label_path = ROOT / "train_gt/gt_img_1.txt"
+# image_path = ROOT / "train_images/img_2.jpg"
+# label_path = ROOT / "train_gt/gt_img_2.txt"
+image_path = ROOT / "train_images/img_3.jpg"
+label_path = ROOT / "train_gt/gt_img_3.txt"
 
 # 忽略 EXIF 自动旋转，保持标注与图像坐标一致
 image = cv2.imread(
@@ -34,7 +38,7 @@ with open(label_path, "r", encoding="utf-8-sig") as f:
         cv2.polylines(image, [polygon], True, color, 2)
         num_boxes += 1
 
-output_path = Path("outputs/gt_example.jpg")
+output_path = Path("outputs/psenet_step1/gt_example." + os.path.basename(image_path))
 output_path.parent.mkdir(parents=True, exist_ok=True)
 
 cv2.imwrite(str(output_path), image)
