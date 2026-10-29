@@ -14,7 +14,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", default="../data/icdar2015")
     parser.add_argument("--name", default="img_1.jpg")
-    parser.add_argument("--output", default="outputs/psenet_step2.png")
+    parser.add_argument("--output", default="outputs/psenet_step2/img_1.png")
     args = parser.parse_args()
 
     data = Path(args.data)

@@ -26,10 +26,10 @@ class MiniPSENet(nn.Module):
         self.stem = nn.Sequential(
             backbone.conv1, backbone.bn1, backbone.relu, backbone.maxpool
         )
-        self.layer1 = backbone.layer1  # C2:  64 channels, stride 4
-        self.layer2 = backbone.layer2  # C3: 128 channels, stride 8
-        self.layer3 = backbone.layer3  # C4: 256 channels, stride 16
-        self.layer4 = backbone.layer4  # C5: 512 channels, stride 32
+        self.layer1 = backbone.layer1  # C2:  64 channels, stride 4, 160×160
+        self.layer2 = backbone.layer2  # C3: 128 channels, stride 8,  80×80
+        self.layer3 = backbone.layer3  # C4: 256 channels, stride 16, 40×40
+        self.layer4 = backbone.layer4  # C5: 512 channels, stride 32, 20×20
 
         # 1x1 lateral convolutions unify channel counts before addition.
         self.lat2 = nn.Conv2d(64, fpn_channels, kernel_size=1)
