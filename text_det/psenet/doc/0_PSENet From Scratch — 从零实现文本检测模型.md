@@ -299,13 +299,9 @@ Robust Reading Competition
 
 创建文件 `scripts/visualize_gt.py`：
 
-```
-from pathlib import Pathimport cv2import numpy as npROOT = Path("data/icdar2015")image_path = ROOT / "train_images/img_1.jpg"label_path = ROOT / "train_gt/gt_img_1.txt"# 忽略 EXIF 自动旋转，保持标注与图像坐标一致image = cv2.imread(    str(image_path),    cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION,)if image is None:    raise FileNotFoundError(image_path)num_boxes = 0with open(label_path, "r", encoding="utf-8-sig") as f:    for line in f:        parts = line.strip().split(",", 8)        if len(parts) < 9:            continue        coords = [int(float(v)) for v in parts[:8]]        polygon = np.array(coords, dtype=np.int32).reshape(4, 2)        transcription = parts[8].strip()        # 绿色：有效文字；红色：忽略区域        color = (0, 0, 255) if transcription == "###" else (0, 255, 0)        cv2.polylines(image, [polygon], True, color, 2)        num_boxes += 1output_path = Path("outputs/gt_example.jpg")
-```
-
 执行：
 
-```
+```bash
 python scripts/visualize_gt.py
 ```
 

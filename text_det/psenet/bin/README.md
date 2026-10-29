@@ -14,8 +14,11 @@ python -m pip install torch torchvision numpy \
 
 
 ```bash
-conda create -n psenet_py311 python=3.11
-conda activate psenet_py311
+conda create -n xinocr_py311 python=3.11
 
+conda activate xinocr_py311
 
+pip install torch torchvision
+#pip3 install torch torchvision --user
+#python3 -m pip install torch torchvision
 ```
