@@ -42,6 +42,10 @@ For another image:
 
 ```bash
 python text_detection/psenet/visualize_kernels.py --name img_2.jpg
+
+cd text_det/psenet
+python visualize_kernels.py --name img_2.jpg --output outputs/psenet_step2_img_2.png
+python visualize_kernels.py --name img_3.jpg --output outputs/psenet_step2_img_3.png
 ```
 
 If your dataset is stored elsewhere, add `--data /your/dataset/path`.
