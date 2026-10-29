@@ -7,6 +7,7 @@ ResNet18 Backbone + 简化 FPN + 3 通道 Segmentation Head（分割头）。
 目标不是一次性实现完整 PSENet，而是先弄清楚：一张图片怎样经过 CNN 提取特征、融合多尺度信息，最终预测 Step 2 中的三个 Kernel。
 
 ## 一、整体网络结构
+![](step3_network_architecture.jpg)
 
 Input Image
 
@@ -14,49 +15,25 @@ Input Image
 
 1\. Backbone — ResNet18
 
-C2
+C2      160×160     64 ch
 
-160×160
+C3      80×80       128 ch
 
-64 ch
+C4      40×40       256 ch
 
-C3
-
-80×80
-
-128 ch
-
-C4
-
-40×40
-
-256 ch
-
-C5
-
-20×20
-
-512 ch
+C5      20×20       512 ch
 
 2\. FPN — Feature Pyramid Network
 
 1×1 Conv 统一通道 → 自顶向下上采样并相加 → 上采样至 160×160 → Concatenate
 
-P2
+P2      64 ch
 
-64 ch
+P3      64 ch
 
-P3
+P4      64 ch
 
-64 ch
-
-P4
-
-64 ch
-
-P5
-
-64 ch
+P5      64 ch
 
 Fused Features: [B, 256, 160, 160]
 
