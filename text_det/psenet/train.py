@@ -101,7 +101,9 @@ def save_checkpoint(path, model, optimizer, args, *, step=0, epoch=0,
         "optimizer_state": optimizer.state_dict(),
         "step": step, "epoch": epoch, "best_value": best_value,
         "model_config": {"num_kernels": 3, "fpn_channels": 64},
-        "train_config": vars(args),
+        # pathlib.Path is not supported by torch.load(weights_only=True).
+        "train_config": {k: str(v) if isinstance(v, Path) else v
+                         for k, v in vars(args).items()},
     }, path)
 
 

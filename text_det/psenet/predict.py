@@ -13,10 +13,8 @@ import cv2
 import numpy as np
 import torch
 
-# Match the ImageNet RGB normalization used by Step 5 dataset.py.
-# Define it here to avoid requiring dataset/pyclipper during inference.
-MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+from preprocess import (bgr_to_tensor, letterbox as resize_letterbox,
+                        to_original)
 
 from model import MiniPSENet
 from pse import (binarize_kernels, colorize_labels,
@@ -37,36 +35,9 @@ def choose_device(name):
     return torch.device('cpu')
 
 
-def resize_letterbox(bgr, size):
-    """Match Step 5 dataset exactly; return canvas and reverse-map metadata."""
-    h, w = bgr.shape[:2]
-    if size < 64 or size % 32 != 0:
-        raise ValueError('Input size must be >=64 and divisible by 32')
-    scale = min(size / w, size / h)
-    new_w = max(1, min(size, round(w * scale)))
-    new_h = max(1, min(size, round(h * scale)))
-    left = (size - new_w) // 2
-    top = (size - new_h) // 2
-    resized = cv2.resize(bgr, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
-    canvas = np.full((size, size, 3), 114, dtype=np.uint8)
-    canvas[top:top + new_h, left:left + new_w] = resized
-    valid = np.zeros((size, size), dtype=bool)
-    valid[top:top + new_h, left:left + new_w] = True
-    return canvas, valid, (new_w / w, new_h / h, left, top, w, h)
-
-
 def image_to_tensor(canvas):
-    rgb = cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
-    normalized = (rgb - MEAN) / STD
-    return torch.from_numpy(normalized.transpose(2, 0, 1).copy()).unsqueeze(0)
-
-
-def to_original(points, transform):
-    sx, sy, left, top, width, height = transform
-    pts = np.asarray(points, dtype=np.float32).copy()
-    pts[:, 0] = np.clip((pts[:, 0] - left) / sx, 0, width - 1)
-    pts[:, 1] = np.clip((pts[:, 1] - top) / sy, 0, height - 1)
-    return pts
+    """Keep the original inference API ([1, 3, H, W])."""
+    return bgr_to_tensor(canvas, batched=True)
 
 
 def annotate(bgr, instances, transform):

@@ -11,9 +11,8 @@ import torch
 from torch.utils.data import Dataset
 
 from kernel import RATIOS, generate_kernel_labels, read_icdar_gt
+from preprocess import MEAN, STD, bgr_to_tensor, letterbox, to_letterbox
 
-MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 EXTENSIONS = {".jpg", ".jpeg", ".png"}
 
 
@@ -35,34 +34,11 @@ def list_training_images(root):
 
 
 def letterbox_and_polygons(bgr, polygons, size):
-    """Resize keeping aspect ratio, center pad to size×size, transform polygons."""
-    h, w = bgr.shape[:2]
-    if h < 1 or w < 1:
-        raise ValueError("Invalid input image dimensions")
-    if size < 64 or size % 32 != 0:
-        raise ValueError("size must be >=64 and divisible by 32")
-
-    scale = min(size / w, size / h)
-    new_w = max(1, min(size, round(w * scale)))
-    new_h = max(1, min(size, round(h * scale)))
-    left = (size - new_w) // 2
-    top = (size - new_h) // 2
-
-    resized = cv2.resize(bgr, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
-    canvas = np.full((size, size, 3), 114, dtype=np.uint8)
-    canvas[top:top + new_h, left:left + new_w] = resized
-    content_mask = np.zeros((size, size), dtype=np.uint8)
-    content_mask[top:top + new_h, left:left + new_w] = 1
-
-    # Actual x/y scales account for pixel rounding in new_w/new_h.
-    sx, sy = new_w / w, new_h / h
-    transformed = []
-    for polygon in polygons:
-        p = np.asarray(polygon, dtype=np.float32).copy()
-        p[:, 0] = p[:, 0] * sx + left
-        p[:, 1] = p[:, 1] * sy + top
-        transformed.append(np.round(p).astype(np.int32))
-    return canvas, transformed, content_mask
+    """Training convenience wrapper around the shared letterbox transform."""
+    canvas, valid, transform = letterbox(bgr, size)
+    mapped = [np.rint(to_letterbox(p, transform)).astype(np.int32)
+              for p in polygons]
+    return canvas, mapped, valid.astype(np.uint8)
 
 
 class ICDAR2015Dataset(Dataset):
@@ -106,9 +82,7 @@ class ICDAR2015Dataset(Dataset):
             image = np.clip(image.astype(np.float32) * alpha + beta,
                             0, 255).astype(np.uint8)
 
-        rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
-        normalized = (rgb - MEAN) / STD
-        image_tensor = torch.from_numpy(normalized.transpose(2, 0, 1).copy())
+        image_tensor = bgr_to_tensor(image)
         return {
             "image": image_tensor,  # [3,H,W] float32
             "kernels": torch.from_numpy(kernels.copy()).float(),  # [3,H,W]

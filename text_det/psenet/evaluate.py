@@ -131,7 +131,7 @@ def main():
                    help='0=all; positive integer for smoke testing only')
     p.add_argument('--visualize', type=int, default=12,
                    help='save this many lowest-F1 examples with at least one care GT')
-    p.add_argument('--out', default='outputs/psenet_step7/validation')
+    p.add_argument('--out', default='outputs/psenet_step7')
     args = p.parse_args()
     if args.max_images < 0 or args.visualize < 0:
         p.error('--max-images and --visualize must be >= 0')
@@ -146,7 +146,9 @@ def main():
     image_pairs = get_images(args.data, args.split, args.split_json)
     if args.max_images:
         image_pairs = image_pairs[:args.max_images]
-    out = Path(args.out)
+
+    weights_dirname = Path(args.checkpoint).parent.name
+    out = Path(args.out) / f"{weights_dirname}.{args.split}.{args.size}"
     rrc_dir = out / 'rrc_results'
     rrc_dir.mkdir(parents=True, exist_ok=True)
     rows, total = [], {'tp': 0, 'fp': 0, 'fn': 0}
