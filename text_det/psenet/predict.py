@@ -7,32 +7,21 @@ From LearnOCR root:
 """
 import argparse
 import json
+import os.path
 from pathlib import Path
 
 import cv2
 import numpy as np
 import torch
 
+from utils import choose_device
 from preprocess import (bgr_to_tensor, letterbox as resize_letterbox,
                         to_original)
 
 from model import MiniPSENet
 from pse import (binarize_kernels, colorize_labels,
                  extract_instances, pse_expand)
-
-
-def choose_device(name):
-    if name != 'auto':
-        if name == 'cuda' and not torch.cuda.is_available():
-            raise RuntimeError('CUDA requested but unavailable')
-        if name == 'mps' and not torch.backends.mps.is_available():
-            raise RuntimeError('MPS requested but unavailable')
-        return torch.device(name)
-    if torch.cuda.is_available():
-        return torch.device('cuda')
-    if torch.backends.mps.is_available():
-        return torch.device('mps')
-    return torch.device('cpu')
+from pse import instance_color
 
 
 def image_to_tensor(canvas):
@@ -45,12 +34,12 @@ def annotate(bgr, instances, transform):
     vis = bgr.copy()
     overlay = vis.copy()
     for det in instances:
-        color = tuple(int(c) for c in colorize_id(det['id']))
+        color = tuple(int(c) for c in instance_color(det['id']))
         contour = np.rint(to_original(det['contour'], transform)).astype(np.int32)
         cv2.fillPoly(overlay, [contour], color)
     vis = cv2.addWeighted(overlay, 0.25, vis, 0.75, 0)
     for det in instances:
-        color = tuple(int(c) for c in colorize_id(det['id']))
+        color = tuple(int(c) for c in instance_color(det['id']))
         polygon = np.rint(to_original(det['box'], transform)).astype(np.int32)
         cv2.polylines(vis, [polygon], True, color, 2)
         x, y = polygon.min(axis=0)
@@ -60,18 +49,14 @@ def annotate(bgr, instances, transform):
     return vis
 
 
-def colorize_id(instance_id):
-    n = int(instance_id)
-    return (60 + (67 * n) % 196, 60 + (113 * n) % 196,
-            60 + (157 * n) % 196)
-
-
-def main():
+def get_args():
     p = argparse.ArgumentParser(description='MiniPSENet + Python PSE inference')
-    p.add_argument('--checkpoint', required=True,
+    p.add_argument('--checkpoint', #required=True,
+                   default="outputs/psenet_step5/train_960/best.pt",
                    help='Step 5 best.pt / last.pt (use only trusted checkpoints)')
-    p.add_argument('--image', required=True)
-    p.add_argument('--size', type=int, default=None,
+    p.add_argument('--image', #required=True,
+                   default="../data/icdar2015/test_images/img_1.jpg")
+    p.add_argument('--size', type=int, default=1280,
                    help='default: saved Step 5 train_config.size; fallback 512')
     p.add_argument('--device', choices=['auto', 'cpu', 'cuda', 'mps'], default='auto')
     p.add_argument('--threshold', type=float, default=0.5,
@@ -80,9 +65,11 @@ def main():
     p.add_argument('--min-area', type=int, default=30,
                    help='minimum final connected area in letterbox pixels')
     p.add_argument('--min-score', type=float, default=0.5)
-    p.add_argument('--out', default='outputs/psenet_step6/prediction.jpg')
-    args = p.parse_args()
+    p.add_argument('--out_dir', default='outputs/psenet_step6')
+    return p.parse_args()
 
+
+def main(args):
     # weights_only=True avoids unrestricted pickle loading for this checkpoint
     # structure; never use unknown model files just because they have a .pt suffix.
     ckpt = torch.load(args.checkpoint, map_location='cpu', weights_only=True)
@@ -98,8 +85,7 @@ def main():
     model.load_state_dict(ckpt['model_state'], strict=True)
     model.to(device).eval()
 
-    img = cv2.imread(str(args.image),
-                     cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION)
+    img = cv2.imread(str(args.image), cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION)
     if img is None:
         raise FileNotFoundError(args.image)
     canvas, valid, transform = resize_letterbox(img, size)
@@ -116,11 +102,12 @@ def main():
         labels, probabilities[-1], min_area=args.min_area, min_score=args.min_score
     )
 
-    out = Path(args.out)
-    out.parent.mkdir(parents=True, exist_ok=True)
+    out_dir = Path(args.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
     overlay = annotate(img, detections, transform)
-    if not cv2.imwrite(str(out), overlay):
-        raise RuntimeError(f'Could not write {out}')
+    save_path = out_dir / f"{Path(args.image).stem}.jpg"
+    if not cv2.imwrite(save_path, overlay):
+        raise RuntimeError(f'Could not write {save_path}')
 
     # For diagnostics, colorized instance IDs in 512x512 input coordinates.
     accepted = np.zeros(labels.shape, dtype=np.int32)
@@ -136,7 +123,7 @@ def main():
     debug.append(colors)
     # Horizontal gallery: input | masks | expansion stages | filtered labels.
     debug_image = np.concatenate(debug, axis=1)
-    debug_path = out.with_name(out.stem + '_debug.png')
+    debug_path = out_dir / f"{Path(args.image).stem}_debug.png"
     cv2.imwrite(str(debug_path), debug_image)
 
     records = []
@@ -147,12 +134,13 @@ def main():
             'area_at_model_resolution': det['area'],
             'box_xy': np.round(mapped_box, 1).tolist(),
         })
-    json_path = out.with_suffix('.json')
+    json_path = out_dir / f"{Path(args.image).stem}.json"
     json_path.write_text(json.dumps(records, indent=2), encoding='utf-8')
     print(f'Device: {device} | checkpoint input size: {size}')
     print(f'Detected {len(detections)} text instances')
-    print(f'Overlay: {out}\nDebug: {debug_path}\nQuadrilaterals: {json_path}')
+    print(f'Overlay: {out_dir}\nDebug: {debug_path}\nQuadrilaterals: {json_path}')
 
 
 if __name__ == '__main__':
-    main()
+    main(get_args())
+

@@ -135,6 +135,12 @@ def extract_instances(labels, text_probability, min_area=30, min_score=0.5):
     return instances
 
 
+def instance_color(instance_id):
+    """Deterministic BGR color for an instance."""
+    n = int(instance_id)
+    return 60 + (67 * n) % 196, 60 + (113 * n) % 196, 60 + (157 * n) % 196
+
+
 def colorize_labels(labels):
     """Visualize integer instance IDs with reproducible colors (BGR)."""
     labels = np.asarray(labels)
@@ -142,9 +148,6 @@ def colorize_labels(labels):
     for instance_id in np.unique(labels):
         if instance_id == 0:
             continue
-        n = int(instance_id)
-        color = (60 + (67 * n) % 196,
-                 60 + (113 * n) % 196,
-                 60 + (157 * n) % 196)
+        color = instance_color(instance_id)
         image[labels == instance_id] = color
     return image

@@ -52,6 +52,11 @@ To start with a known image, use the overfit-one-image checkpoint and the same i
 python text_detection/psenet/predict.py \
   --checkpoint outputs/psenet_step5/overfit/last.pt \
   --image data/icdar2015/train_images/img_1.jpg
+
+
+python predict.py \
+  --checkpoint outputs/psenet_step5/train_960/best.pt \
+  --image ../data/icdar2015/train_images/img_1.jpg
 ```
 
 The script reads `model_config` and `train_config.size` from the checkpoint (Step 5 format), uses the **same letterbox / ImageNet RGB normalization** as Step 5, runs sigmoid, obtains nested binary kernels, and applies PSE. It converts predicted points from the letterbox coordinate system to the **original image**. It saves:
