@@ -57,6 +57,13 @@ python text_detection/psenet/predict.py \
 python predict.py \
   --checkpoint outputs/psenet_step5/train_960/best.pt \
   --image ../data/icdar2015/train_images/img_1.jpg
+
+python predict2.py \
+  --checkpoint outputs/psenet_step5/train_960/best.pt \
+  --image ../data/icdar2015/test_images/img_1.jpg \
+  --size 1280 \
+  --out outputs/psenet_step6/img_1_boxes.jpg \
+  --debug-dir outputs/psenet_step6/img_1_debug
 ```
 
 The script reads `model_config` and `train_config.size` from the checkpoint (Step 5 format), uses the **same letterbox / ImageNet RGB normalization** as Step 5, runs sigmoid, obtains nested binary kernels, and applies PSE. It converts predicted points from the letterbox coordinate system to the **original image**. It saves:

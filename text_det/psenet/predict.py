@@ -91,13 +91,19 @@ def main(args):
     canvas, valid, transform = resize_letterbox(img, size)
     x = image_to_tensor(canvas).to(device)
 
+    # 1. 模型输出三个 Kernel 的 logits
+    # 2. 转换为概率
+    # probs = logits.sigmoid()[0].cpu().numpy()
     with torch.inference_mode():
         probabilities = model(x).sigmoid()[0].float().cpu().numpy()
     probabilities[:, ~valid] = 0.0  # don't detect in letterbox padding
+    # 3. 阈值二值化，并确保 K1 ⊆ K2 ⊆ K3
     masks = binarize_kernels(probabilities, args.threshold)
+    # 4. 连通域 + PSE 逐级扩张
     labels, steps = pse_expand(
         masks, min_kernel_area=args.min_kernel_area, return_steps=True
     )
+    # 5. 提取文本实例和旋转矩形框
     detections = extract_instances(
         labels, probabilities[-1], min_area=args.min_area, min_score=args.min_score
     )
